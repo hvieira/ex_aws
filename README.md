@@ -59,6 +59,8 @@ ExAws.S3.list_objects("my-bucket") |> ExAws.stream!() |> Enum.to_list()
 
 ExAws requires valid AWS credentials in order to work properly. There's several options to configure this, composing a chain (if wanted):
 - `{:system, env_var_name}` - Looks up the environment variable defined by `env_var_name`
+- `{:irsa, session_name}` - Uses the standard environment variables from the [identity webhook](https://github.com/aws/amazon-eks-pod-identity-webhook) to use [IAM roles for service accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html)
+When calling STS, it will set the session name as defined by `session_name`
 - `:instance_role` - In order, ExAws tries to retrieve the credentials:
   - from the ECS credential endpoint. A [task role](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html) needs to be assigned to the task
   - from the instance metadata endpoint. An [IAM role](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html) needs to be assigned to the instance
