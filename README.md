@@ -55,10 +55,16 @@ ExAws.S3.list_objects("my-bucket") |> ExAws.request(region: "us-west-1")
 ExAws.S3.list_objects("my-bucket") |> ExAws.stream!() |> Enum.to_list()
 ```
 
-### AWS Key configuration
+### AWS Credentials configuration
 
-ExAws requires valid AWS keys in order to work properly. ExAws by default does
-the equivalent of:
+ExAws requires valid AWS credentials in order to work properly. There's several options to configure this, composing a chain (if wanted):
+- `{:system, env_var_name}` - Looks up the environment variable defined by `env_var_name`
+- `:instance_role` - In order, ExAws tries to retrieve the credentials:
+  - from the ECS credential endpoint. A [task role](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html) needs to be assigned to the task
+  - from the instance metadata endpoint. An [IAM role](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html) needs to be assigned to the instance
+- `{:awscli, "profile_name", timeout}` - looks up AWS CLI config files
+
+ExAws by default does the equivalent of:
 
 ```elixir
 config :ex_aws,
@@ -68,19 +74,17 @@ config :ex_aws,
 
 This means it will try to resolve credentials in order:
 
-* Look for the AWS standard `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables
-* Resolve credentials with IAM
-  * If running inside ECS and a [task role](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html) has been assigned it will use it
-  * Otherwise it will fall back to the [instance role](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html)
+1. Look for the AWS standard `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables
+2. Resolve credentials with ECS credentials endpoint
+3. Resolve credentials with the instance metadata endpoint
 
+#### **A note on AWS CLI credentials**
 AWS CLI config files are supported, but require an additional dependency:
 
 ```elixir
 {:configparser_ex, "~> 4.0"}
 ```
-
-You can then add `{:awscli, "profile_name", timeout}` to the above config and
-it will pull information from `~/.aws/config` and `~/.aws/credentials`
+ExAws will pull information from `~/.aws/config` and `~/.aws/credentials`
 
 Alternatively, if you already have a profile name set in the `AWS_PROFILE` environment
 variable, you can use that with `{:awscli, :system, timeout}`
