@@ -113,7 +113,12 @@ defmodule ExAws.Config.AuthCache do
   defp refresh_auth_if_stale(_, config, ets), do: refresh_auth_now(config, ets)
 
   defp refresh_auth_now(config, ets) do
-    auth = ExAws.InstanceMeta.security_credentials(config)
+
+    auth = case Map.has_key?(config, :web_identity_token_file) do
+      true -> nil # TODO ExAws.Irsa.retrieve_credentials(config)
+      false -> ExAws.InstanceMeta.security_credentials(config)
+    end
+
     :ets.insert(ets, {@instance_auth_key, auth})
     Process.send_after(__MODULE__, {:refresh_auth, config}, next_refresh_in(auth))
     auth

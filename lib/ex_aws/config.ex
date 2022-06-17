@@ -107,6 +107,23 @@ defmodule ExAws.Config do
     System.get_env(env_key)
   end
 
+  def retrieve_runtime_value({:irsa, session_name}, config) do
+    with {:ok, {region, wanted_role_arn, path_to_token_file, use_regional_endpoints}} <- retrieve_irsa_config() do
+      config
+      |> Map.put(:session_name, session_name)
+      |> Map.put(:region, region)
+      |> Map.put(:role_arn, wanted_role_arn)
+      |> Map.put(:web_identity_token_file, path_to_token_file)
+      |> Map.put(:use_sts_regional_endpoints, use_regional_endpoints)
+      |> ExAws.Config.AuthCache.get()
+      |> Map.take([:access_key_id, :secret_access_key, :security_token])
+      |> valid_map_or_nil
+    else
+      # TODO in order to build a chain, return nil. Test it!
+      _ -> nil
+    end
+  end
+
   def retrieve_runtime_value(:instance_role, config) do
     config
     |> ExAws.Config.AuthCache.get()
@@ -170,4 +187,21 @@ defmodule ExAws.Config do
 
   defp valid_map_or_nil(map) when map == %{}, do: nil
   defp valid_map_or_nil(map), do: map
+
+  defp retrieve_irsa_config() do
+    region = System.get_env("AWS_REGION")
+    wanted_role_arn = System.get_env("AWS_ROLE_ARN")
+    path_to_token_file = System.get_env("AWS_WEB_IDENTITY_TOKEN_FILE")
+    use_regional_endpoints = case System.get_env("AWS_STS_REGIONAL_ENDPOINTS") do
+      "regional" -> true
+      _ -> false
+    end
+
+    case {region, wanted_role_arn, path_to_token_file} do
+      {nil, _, _} -> {:error, "AWS_REGION must be set for irsa"}
+      {_, nil, _} -> {:error, "AWS_ROLE_ARN must be set for irsa"}
+      {_, _, nil} -> {:error, "AWS_WEB_IDENTITY_TOKEN_FILE must be set for irsa"}
+      _ -> {:ok, {region, wanted_role_arn, path_to_token_file, use_regional_endpoints}}
+    end
+  end
 end
